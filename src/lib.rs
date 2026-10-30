@@ -18,6 +18,7 @@ pub use tree_buffer::QuatTreeBuffer;
 #[cfg(test)]
 mod tests {
     use crate::{BasicWidget, Container, LayoutMode, Quat, QuatByte, QuatTreeBuffer, UiEvent, UiState, Widget};
+    use crate::ffi::quat_byte_set_safe;
 
     // ==========================================
     // 1. NAJLAKŠI TESTOVI (Osnovne jedinice i bitovi)
@@ -195,4 +196,23 @@ mod tests {
         // Proveravamo da memorijska potrošnja ostaje stabilna i optimizovana (10000 / 4 = 2500 bajtova)
         assert_eq!(buffer.memory_usage_bytes(), (NODE_COUNT + 3) / 4 * std::mem::size_of::<QuatByte>());
     }
+    #[test]
+fn test_13_ffi_null_pointer_safety() {
+    // Testira da FFI bezbedno upravlja null pokazivačima bez panic-a
+    let error_code = unsafe {
+        quat_byte_set_safe(std::ptr::null_mut(), 0, 0b01)
+    };
+    // Pretpostavljajući da je QuatUiError::NullPointer vrednost 1
+    assert_eq!(error_code as u32, 1);
+}
+
+#[test]
+fn test_14_layout_resolution() {
+    let mode = LayoutMode::default();
+    let rect = mode.resolve_layout(800.0, 600.0);
+    // Proverava da li default layout ispravno postavlja dimenzije
+    assert!(rect.width > 0.0);
+    assert!(rect.height > 0.0);
+}
+
 }

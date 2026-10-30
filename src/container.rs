@@ -1,5 +1,6 @@
 use crate::state::UiState;
 use crate::widget::Widget;
+use crate::UiEvent;
 
 /// A container widget capable of holding child widgets (Widget Tree).
 pub struct Container {
@@ -26,6 +27,27 @@ impl Container {
     pub fn child_count(&self) -> usize {
         self.children.len()
     }
+    pub fn dispatch_event(&mut self, event: &UiEvent) -> bool {
+        let mut handled = false;
+
+        // Propagate event to children widgets
+        for child in &mut self.children {
+            // Target quat mapping check
+            let target_state = event.target_quat();
+            
+            // If child matches state or handles event
+            handled = child.state().quat == target_state;
+            if handled {
+                // Trigger state update on child matching quaternary logic
+                let mut current_state = child.state();
+                current_state.quat = target_state;
+                child.set_state(current_state);
+                break;
+            }
+        }
+        handled
+    }
+
 }
 
 impl Widget for Container {

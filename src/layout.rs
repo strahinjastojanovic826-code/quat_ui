@@ -11,6 +11,14 @@ pub struct LayoutMode {
     pub vertical: Quat,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct LayoutRect {
+    pub x: f32,
+    pub y: f32,
+    pub width: f32,
+    pub height: f32,
+}
+
 impl Default for LayoutMode {
     fn default() -> Self {
         Self {
@@ -34,4 +42,22 @@ impl LayoutMode {
     pub fn is_expanded(&self) -> bool {
         self.horizontal == Quat::V11 || self.vertical == Quat::V11
     }
+    pub fn resolve_layout(&self, parent_width: f32, parent_height: f32) -> LayoutRect {
+        // 00: Collapsed -> Zero space
+        if self.is_collapsed() {
+            return LayoutRect { x: 0.0, y: 0.0, width: 0.0, height: 0.0 };
+        }
+
+        // 11: Expanded -> Fills all available space
+        let width = if self.horizontal.to_bits() == 0b11 { parent_width } else { parent_width * 0.5 };
+        let height = if self.vertical.to_bits() == 0b11 { parent_height } else { parent_height * 0.5 };
+
+        LayoutRect {
+            x: 0.0,
+            y: 0.0,
+            width,
+            height,
+        }
+    }
+
 }

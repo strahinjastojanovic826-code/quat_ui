@@ -28,6 +28,24 @@ impl QuatTreeBuffer {
         self.bytes[byte_idx].set(sub_idx, quat)
     }
 
+    pub fn count_nodes_by_state(&self, target_quat: Quat) -> usize {
+    let target_bits = target_quat.to_bits();
+    let mut count = 0;
+
+    // Iterate over packed u8 chunks in memory (Cache locality friendly)
+    for byte in &self.bytes {
+        // Unroll the 4 quats packed inside QuatByte
+        for i in 0..4 {
+            if let Some(q) = byte.get(i) {
+                if q.to_bits() == target_bits {
+                    count += 1;
+                }
+            }
+        }
+    }
+    count
+}
+
     /// Retrieves the quaternary state of a specific node index.
     pub fn get_node_state(&self, node_index: usize) -> Option<Quat> {
         if node_index >= self.capacity_nodes {

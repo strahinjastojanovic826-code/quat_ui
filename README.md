@@ -4,6 +4,19 @@
 
 ---
 
+## FEATURES
+
+* **Quaternary Logic (2-bit States):** Uses `Quat` enums based on 2-bit values (`V00`, `V01`, `V10`, `V11`) for compact state representation[cite: 2, 7].
+* **Byte Packing (`QuatByte`):** Packs up to 4 quaternary nodes into a single `u8` byte for minimal memory footprint[cite: 7, 8].
+* **High-Performance Memory Buffer (`QuatTreeBuffer`):** A data-oriented structure designed to store and manage the state of thousands of UI nodes efficiently[cite: 5].
+* **Widget Hierarchy & Containers:** Flexible container (`Container`) and widget (`BasicWidget`, `Widget` trait) systems for building nested UI structures[cite: 1, 6].
+* **Layout Engine (`LayoutMode`):** Encodes layout behavior (collapsed, relative, absolute, expanded) directly through quaternary states[cite: 3].
+* **Event Management (`UiEvent`):** Robust mapping of high-level user interactions and system triggers into quaternary target states[cite: 2].
+* **Universal FFI Layer (C / C# / Python Interop):** Stable external interface with memory management and interoperability functions for other programming languages[cite: 9, 10, 11, 12].
+* **Comprehensive Testing:** Thorough suite of unit tests and heavy stress tests covering thousands of nodes in real-time[cite: 13, 14, 15, 16].
+
+---
+
 ## ⚙️ Core Concepts
 
 The library encodes UI states into 2-bit quaternary values (`Quat`):
@@ -33,7 +46,7 @@ Add the library to your Rust project configuration with `cdylib` support for FFI
 
 ```toml
 [dependencies]
-quat_ui = "0.3.0"
+quat_ui = "0.4.0"
 ```
 
 ---
@@ -82,7 +95,8 @@ using System.Runtime.InteropServices;
 
 class Program
 {
-    [DllImport("quat_ui", CallingConvention = CallingConvention.Cdecl)]
+    // Dodat je CharSet.Ansi da bi C# ispravno konvertovao string u ANSI/UTF-8 format koji Rust očekuje
+    [DllImport("quat_ui", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
     private static extern IntPtr quat_widget_new(string id);
 
     [DllImport("quat_ui", CallingConvention = CallingConvention.Cdecl)]
@@ -107,9 +121,18 @@ class Program
 ### Python Example:
 ```python
 import ctypes
+import sys
 
-# Load the compiled library
-lib = ctypes.CDLL("./target/release/libquat_ui.so")
+# Automatsko prepoznavanje operativnog sistema i odgovarajuće ekstenzije biblioteke
+if sys.platform.startswith("win"):
+    lib_path = "./target/release/quat_ui.dll"
+elif sys.platform.startswith("darwin"):
+    lib_path = "./target/release/libquat_ui.dylib"
+else:
+    lib_path = "./target/release/libquat_ui.so"
+
+# Učitavanje kompajlirane biblioteke
+lib = ctypes.CDLL(lib_path)
 
 # Setup argument and return types
 lib.quat_widget_new.argtypes = [ctypes.c_char_p]
@@ -119,10 +142,10 @@ lib.quat_widget_render.argtypes = [ctypes.c_void_p]
 lib.quat_widget_free.argtypes = [ctypes.c_void_p]
 
 # Usage
-widget = lib.quat_widget_new(b"PythonButton")
-lib.quat_widget_set_state(widget, 2)  # Binary 10 (Hover state)
-lib.quat_widget_render(widget)
-lib.quat_widget_free(widget)
+widget = lib.quat_widget_new(b"PythonButton")[cite: 19]
+lib.quat_widget_set_state(widget, 2)  # Binary 10 (Hover state)[cite: 7, 19]
+lib.quat_widget_render(widget)[cite: 19]
+lib.quat_widget_free(widget)[cite: 19]
 ```
 
 ---

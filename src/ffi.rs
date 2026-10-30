@@ -2,6 +2,14 @@ use std::ffi::CStr;
 use std::os::raw::c_char;
 use crate::{BasicWidget, Container, Quat, QuatByte, QuatTreeBuffer, UiEvent, UiState, Widget};
 
+#[repr(C)]
+pub enum QuatUiError {
+    Success = 0,
+    NullPointer = 1,
+    OutOfBounds = 2,
+    InternalPanic = 3,
+}
+
 // --- QUAT & QUAT BYTE FFI ---
 
 #[unsafe(no_mangle)]
@@ -191,3 +199,33 @@ pub extern "C" fn quat_tree_buffer_memory_size(ptr: *const QuatTreeBuffer) -> us
     if ptr.is_null() { return 0; }
     unsafe { (&*ptr).memory_usage_bytes() }
 }
+
+/// Helper function to safely catch panics across FFI boundaries
+fn wrap_unwind<F>(f: F) -> QuatUiError
+where
+    F: FnOnce() -> Result<(), QuatUiError> + std::panic::UnwindSafe,
+{
+    match std::panic::catch_unwind(f) {
+        Ok(Ok(())) => QuatUiError::Success,
+        Ok(Err(e)) => e,
+        Err(_) => QuatUiError::InternalPanic,
+    }
+}
+
+// Example of industrial-grade safe FFI function using QuatByte
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn quat_byte_set_safe(
+    ptr: *mut QuatByte,
+    index: usize,
+    quat_val: u8,
+) -> QuatUiError { unsafe {
+    if ptr.is_null() {
+        return QuatUiError::NullPointer;
+    }
+
+    wrap_unwind(|| {
+        let q_byte = &mut *ptr;
+        let quat = Quat::from_bits(quat_val);
+        q_byte.set(index, quat).map_err(|_| QuatUiError::OutOfBounds)
+    })
+}}
