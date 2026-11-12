@@ -3,7 +3,7 @@ use crate::quat::{Quat, QuatByte};
 /// High-performance, data-oriented buffer that stores the state of thousands
 /// of UI nodes densely packed into `QuatByte` chunks.
 pub struct QuatTreeBuffer {
-    bytes: Vec<QuatByte>,
+    pub bytes: Vec<QuatByte>,
     capacity_nodes: usize,
 }
 
@@ -54,6 +54,19 @@ impl QuatTreeBuffer {
         let byte_idx = node_index / 4;
         let sub_idx = node_index % 4;
         self.bytes[byte_idx].get(sub_idx)
+    }
+
+    /// Returns an accessibility-friendly flat list of node states
+    pub fn get_accessibility_tree(&self) -> Vec<u8> {
+        let mut result = Vec::new();
+        for byte in &self.bytes {
+            for i in 0..4 {
+                if let Some(quat) = byte.get(i) {
+                    result.push(quat.to_bits());
+                }
+            }
+        }
+        result
     }
 
     /// Returns the total memory footprint in bytes used by this UI node buffer.

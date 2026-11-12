@@ -7,6 +7,8 @@ pub struct Container {
     pub id: String,
     pub state: UiState,
     children: Vec<Box<dyn Widget>>,
+    pub scroll_y: f32,
+    pub max_scroll_y: f32,
 }
 
 impl Container {
@@ -15,6 +17,8 @@ impl Container {
             id: id.into(),
             state: UiState::default(),
             children: Vec::new(),
+            scroll_y: 0.0,
+            max_scroll_y: 0.0,
         }
     }
 

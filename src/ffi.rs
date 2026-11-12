@@ -212,6 +212,12 @@ where
     }
 }
 
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn quat_ui_get_version(out_major: *mut u32, out_minor: *mut u32) { unsafe {
+    if !out_major.is_null() { *out_major = 1; }
+    if !out_minor.is_null() { *out_minor = 0; }
+}}
+
 // Example of industrial-grade safe FFI function using QuatByte
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn quat_byte_set_safe(

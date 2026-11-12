@@ -14,6 +14,9 @@
 * **Event Management (`UiEvent`):** Robust mapping of high-level user interactions and system triggers into quaternary target states[cite: 2].
 * **Universal FFI Layer (C / C# / Python Interop):** Stable external interface with memory management and interoperability functions for other programming languages[cite: 9, 10, 11, 12].
 * **Comprehensive Testing:** Thorough suite of unit tests and heavy stress tests covering thousands of nodes in real-time[cite: 13, 14, 15, 16].
+* **Theme Engine (`Theme` & `Color`):** Automatic mapping of quaternary states into visual themes and colors.
+* **Container Scrolling (`scroll_y` & `max_scroll_y`):** Built-in vertical scroll states and offset management for container widgets.
+* **Renderer Backend (`RendererBackend`):** Abstract rendering bridge designed to map quaternary UI buffers onto graphical targets.
 
 ---
 
@@ -26,6 +29,30 @@ The library encodes UI states into 2-bit quaternary values (`Quat`):
 * **`11`**: Active / Pressed / Expanded Flow
 
 Using `QuatByte`, **4 quaternary states are packed into a single standard byte (`u8`)**, ensuring ultra-high cache locality and minimal memory usage.
+
+---
+
+## Benchmark
+
+| Test Name | Duration | Description / Category |
+| :--- | :--- | :--- |
+| `test_01_quat_basic_bits` | 1.7µs | Quaternary basic bit conversions & masking |
+| `test_02_quat_byte_default` | 900ns | QuatByte default initialization |
+| `test_03_quat_byte_single_set_get` | 400ns | Single bit-packing set and get operations |
+| `test_04_quat_byte_out_of_bounds` | 300ns | Out of bounds safety checks |
+| `test_05_quat_byte_full_packing` | 400ns | Full 4-quat byte packing & binary verification |
+| `test_06_ui_state_defaults` | 100ns | UI state default values & active states |
+| `test_07_ui_event_mapping` | 300ns | UI event to quaternary state mapping |
+| `test_08_basic_widget_state_update` | 6.1µs | Basic widget state transitions |
+| `test_09_layout_mode_flags` | 200ns | Layout mode flag checks (collapsed/expanded) |
+| `test_10_container_widget_hierarchy` | 2.8µs | Container child widget management |
+| `test_11_tree_buffer_medium_capacity` | 1.4µs | Tree buffer bounds & memory footprint |
+| `test_12_stress_test_tree_buffer_heavy_churn` | 2.3692ms | Heavy stress test (10,000 nodes, multiple churn loops) |
+| `test_13_ffi_null_pointer_safety` | 100ns | FFI safety handling with null pointers |
+| `test_14_layout_resolution` | 200ns | Layout dimension and constraint resolution |
+| `test_15_theme_resolution_benchmark` | 144.6µs | Theme color resolution across quaternary states |
+| `test_16_container_scrolling_benchmark` | 70.9µs | Container scroll state iterations |
+| `test_17_renderer_backend_benchmark` | 20.7µs | Renderer backend buffer iteration & drawing simulation |
 
 ---
 
@@ -46,7 +73,7 @@ Add the library to your Rust project configuration with `cdylib` support for FFI
 
 ```toml
 [dependencies]
-quat_ui = "0.4.0"
+quat_ui = "0.5.0"
 ```
 
 ---
@@ -79,6 +106,28 @@ fn main() {
     
     println!("\n--- Render After Focus Event ---");
     root_panel.render();
+}
+```
+
+---
+
+## Themes and Scrolling
+
+```rust
+use quat_ui::{Container, Theme, Quat, QuatTreeBuffer, render_tree_buffer};
+
+fn main() {
+    // 1. Initialize container with scroll values
+    let mut root_panel = Container::new("MainPanel");
+    root_panel.scroll_y = 50.0;
+    root_panel.max_scroll_y = 300.0;
+
+    // 2. Setup theme mapping based on quaternary states
+    let theme = Theme::default_dark();
+    let active_color = theme.resolve_color(Quat::V11); // Maps V11 (Active/Pressed) to theme color
+
+    println!("Container scroll Y: {}, Max scroll Y: {}", root_panel.scroll_y, root_panel.max_scroll_y);
+    println!("Resolved active theme color - R: {}, G: {}, B: {}", active_color.r, active_color.g, active_color.b);
 }
 ```
 
