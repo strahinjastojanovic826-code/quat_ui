@@ -23,6 +23,27 @@ impl Quat {
     pub fn to_bits(self) -> u8 {
         self as u8
     }
+
+    /// Returns true if this state represents a collapsed or disabled zero-like state (`00`).
+    pub fn is_zero(self) -> bool {
+        matches!(self, Quat::V00)
+    }
+
+    /// Returns true if this state represents the highest/active state (`11`).
+    pub fn is_max(self) -> bool {
+        matches!(self, Quat::V11)
+    }
+
+    /// Bitwise OR across quaternary states (useful for combining flags).
+    pub fn bit_or(self, other: Quat) -> Quat {
+        Quat::from_bits(self.to_bits() | other.to_bits())
+    }
+
+    /// Bitwise AND across quaternary states.
+    pub fn bit_and(self, other: Quat) -> Quat {
+        Quat::from_bits(self.to_bits() & other.to_bits())
+    }
+
 }
 
 /// A container holding up to 4 quats packed into a single u8 byte.
@@ -55,6 +76,12 @@ impl QuatByte {
         self.0 = (self.0 & clear_mask) | (quat.to_bits() << shift);
         Ok(())
     }
+
+    /// Iterates over all 4 packed quats in order (`0..4`).
+    pub fn iter(&self) -> impl Iterator<Item = (usize, Quat)> + '_ {
+        (0..4).filter_map(|idx| self.get(idx).map(|q| (idx, q)))
+    }
+    
 }
 
 impl Default for QuatByte {

@@ -328,27 +328,280 @@ mod tests {
         use crate::theme::Theme;
         use crate::renderer::{RendererBackend, render_tree_buffer};
         use std::time::Instant;
+        use crate::renderer::RenderCommand;
 
         struct LightMockBackend {
-            count: usize,
-        }
-        impl RendererBackend for LightMockBackend {
-            fn begin_frame(&mut self) { self.count = 0; }
-            fn draw_node(&mut self, _idx: usize, _bits: u8, _theme: &Theme) { self.count += 1; }
-            fn end_frame(&mut self) {}
-        }
+        count: usize,
+    }
 
-        let buffer = QuatTreeBuffer::new(1000);
-        let theme = Theme::default_dark();
-        let mut backend = LightMockBackend { count: 0 };
+    impl RendererBackend for LightMockBackend {
+        fn begin_frame(&mut self) {
+            self.count = 0;
+        }
+        fn draw_command(&mut self, _cmd: RenderCommand) {
+            self.count += 1;
+        }
+        fn end_frame(&mut self) {}
+    }
+
+    let buffer = QuatTreeBuffer::new(1000);
+    let theme = Theme::default_dark();
+    let mut backend = LightMockBackend { count: 0 };
+    render_tree_buffer(&buffer, &theme, 800.0, 600.0, &mut backend);
 
         let start = Instant::now();
         // Benchmark work: render buffer once inside this test
-        render_tree_buffer(&buffer, &theme, &mut backend);
+        render_tree_buffer(&buffer, &theme, 800.0, 600.0, &mut backend);
         let duration = start.elapsed();
 
         assert_eq!(backend.count, 1000);
         println!("\n[BENCHMARK] test_17_renderer_backend_benchmark took: {:?}", duration);
+    }
+
+    #[test]
+    fn test_18_ui_event_transitions_benchmark() {
+        use crate::event::UiEvent;
+        use crate::quat::Quat;
+        use std::time::Instant;
+
+        let start = Instant::now();
+
+        // Disabled (`00`) ignores non-`Enable` events until enabled (`01`)
+        assert_eq!(UiEvent::Disable.next_state(Quat::V01), Quat::V00);
+        assert_eq!(UiEvent::Press.next_state(Quat::V00), Quat::V00);
+        assert_eq!(UiEvent::FocusGained.next_state(Quat::V00), Quat::V00);
+        assert_eq!(UiEvent::Enable.next_state(Quat::V00), Quat::V01);
+
+        // Press (`11`) and Release return to focused/hovered (`10`)
+        assert_eq!(UiEvent::Press.next_state(Quat::V10), Quat::V11);
+        assert_eq!(UiEvent::Release.next_state(Quat::V11), Quat::V10);
+
+        for _ in 0..10_000 {
+            let mut s = Quat::V01;
+            s = UiEvent::FocusGained.next_state(s);
+            s = UiEvent::Press.next_state(s);
+            s = UiEvent::Release.next_state(s);
+            s = UiEvent::FocusLost.next_state(s);
+            assert_eq!(s, Quat::V01);
+        }
+
+        let duration = start.elapsed();
+        println!("\n[BENCHMARK] test_18_ui_event_transitions_benchmark took: {:?}", duration);
+    }
+
+    #[test]
+    fn test_19_container_dispatch_event_benchmark() {
+        use crate::container::Container;
+        use crate::event::UiEvent;
+        use crate::quat::Quat;
+        use crate::widget::BasicWidget;
+        use std::time::Instant;
+
+        let start = Instant::now();
+
+        let mut container = Container::new("EventPanel");
+        container.add_child(BasicWidget::new("Btn1"));
+        container.add_child(BasicWidget::new("Btn2"));
+
+        let changed = container.dispatch_event(&UiEvent::FocusGained);
+        assert!(changed);
+        assert_eq!(container.children[0].state().quat, Quat::V10);
+        assert_eq!(container.children[1].state().quat, Quat::V10);
+
+        // Dispatching the exact same event again should report no state changes
+        let changed_again = container.dispatch_event(&UiEvent::FocusGained);
+        assert!(!changed_again);
+
+        for i in 0..5_000 {
+            let ev = if i % 2 == 0 {
+                UiEvent::Press
+            } else {
+                UiEvent::Release
+            };
+            let _ = container.dispatch_event(&ev);
+        }
+
+        let duration = start.elapsed();
+        println!("\n[BENCHMARK] test_19_container_dispatch_event_benchmark took: {:?}", duration);
+    }
+
+    #[test]
+    fn test_20_layout_detailed_resolution_benchmark() {
+        use crate::layout::LayoutMode;
+        use crate::quat::Quat;
+        use std::time::Instant;
+
+        let start = Instant::now();
+
+        let mode = LayoutMode::new(Quat::V01, Quat::V11);
+        let rect = mode.resolve_detailed(800.0, 600.0, 0.25, 1.0, 120.0, 80.0);
+        assert_eq!(rect.width, 200.0);
+        assert_eq!(rect.height, 600.0);
+
+        let collapsed = LayoutMode::new(Quat::V00, Quat::V00);
+        let zero_rect = collapsed.resolve_detailed(800.0, 600.0, 0.5, 0.5, 100.0, 100.0);
+        assert_eq!(zero_rect.width, 0.0);
+        assert_eq!(zero_rect.height, 0.0);
+
+        for _ in 0..10_000 {
+            let r = mode.resolve_detailed(1920.0, 1080.0, 0.5, 0.75, 200.0, 150.0);
+            assert!(r.width > 0.0 && r.height > 0.0);
+        }
+
+        let duration = start.elapsed();
+        println!("\n[BENCHMARK] test_20_layout_detailed_resolution_benchmark took: {:?}", duration);
+    }
+
+    #[test]
+    fn test_21_tree_buffer_range_query_and_diff_benchmark() {
+        use crate::quat::Quat;
+        use crate::tree_buffer::QuatTreeBuffer;
+        use std::time::Instant;
+
+        let start = Instant::now();
+
+        let mut buf_a = QuatTreeBuffer::new(1024);
+        let mut buf_b = QuatTreeBuffer::new(1024);
+
+        assert!(buf_a.set_range(0, 256, Quat::V10).is_ok());
+        assert_eq!(buf_a.count_in_range(0, 256, Quat::V10), 256);
+
+        buf_b.fill(Quat::V01);
+        let diffs = buf_a.diff_indices(&buf_b);
+        assert_eq!(diffs.len(), 1024);
+
+        for _ in 0..1_000 {
+            buf_a.fill(Quat::V11);
+            let active = buf_a.indices_by_state(Quat::V11);
+            assert_eq!(active.len(), 1024);
+            buf_a.clear_all();
+            assert_eq!(buf_a.count_nodes_by_state(Quat::V00), 1024);
+        }
+
+        let duration = start.elapsed();
+        println!("\n[BENCHMARK] test_21_tree_buffer_range_query_and_diff_benchmark took: {:?}", duration);
+    }
+
+    #[test]
+    fn test_22_dirty_tracking_snapshot_and_diagnostics_benchmark() {
+        use crate::quat::Quat;
+        use crate::renderer::{
+            render_with_diagnostics, LogLevel, RenderCommand, RendererBackend,
+        };
+        use crate::theme::Theme;
+        use crate::tree_buffer::QuatTreeBuffer;
+        use std::time::Instant;
+
+        struct DiagCollector {
+            logs: usize,
+            last_cmds: usize,
+        }
+
+        impl crate::renderer::DiagnosticsSink for DiagCollector {
+            fn log(&mut self, _level: LogLevel, _target: &str, _message: &str) {
+                self.logs += 1;
+            }
+            fn record_frame_metrics(&mut self, metrics: crate::renderer::FrameMetrics) {
+                self.last_cmds = metrics.commands_emitted;
+            }
+        }
+
+        struct TestBackend {
+            drawn: usize,
+        }
+
+        impl RendererBackend for TestBackend {
+            fn begin_frame(&mut self) {
+                self.drawn = 0;
+            }
+            fn draw_command(&mut self, _cmd: RenderCommand) {
+                self.drawn += 1;
+            }
+            fn end_frame(&mut self) {}
+        }
+
+        let start = Instant::now();
+
+        let mut buffer = QuatTreeBuffer::new(64);
+        let mut dirty = vec![false; 64];
+
+        let changed = buffer.set_node_state_tracked(5, Quat::V11, &mut dirty).unwrap();
+        assert!(changed);
+        assert!(dirty[5]);
+
+        let snap = buffer.snapshot();
+        buffer.clear_all();
+        assert_eq!(buffer.get_node_state(5), Some(Quat::V00));
+        assert!(buffer.restore_snapshot(&snap).is_ok());
+        assert_eq!(buffer.get_node_state(5), Some(Quat::V11));
+
+        let theme = Theme::default_dark();
+        let mut backend = TestBackend { drawn: 0 };
+        let mut diag = DiagCollector {
+            logs: 0,
+            last_cmds: 0,
+        };
+
+        for _ in 0..1_000 {
+            let metrics = render_with_diagnostics(
+                &buffer,
+                &dirty,
+                &theme,
+                800.0,
+                600.0,
+                &mut backend,
+                &mut diag,
+            );
+            assert_eq!(metrics.commands_emitted, 1);
+            assert_eq!(backend.drawn, 1);
+        }
+        assert_eq!(diag.last_cmds, 1);
+
+        let duration = start.elapsed();
+        println!(
+            "\n[BENCHMARK] test_22_dirty_tracking_snapshot_and_diagnostics_benchmark took: {:?}",
+            duration
+        );
+    }
+
+    #[test]
+    fn test_23_node_arena_and_ffi_lifecycle_benchmark() {
+        use crate::container::NodeId;
+        use crate::ffi::{
+            quat_arena_add_basic_widget, quat_arena_create, quat_arena_destroy,
+            quat_arena_set_quat, QuatUiError,
+        };
+        use crate::quat::Quat;
+        use std::ffi::CString;
+        use std::time::Instant;
+
+        let start = Instant::now();
+
+        for _ in 0..1_000 {
+            unsafe {
+                let handle = quat_arena_create(16);
+                assert!(!handle.is_null());
+
+                let c_name = CString::new("NodeA").unwrap();
+                let mut out_id: usize = usize::MAX;
+                let add_err = quat_arena_add_basic_widget(handle, c_name.as_ptr(), &mut out_id);
+                assert_eq!(add_err as u32, QuatUiError::Success as u32);
+                assert_eq!(out_id, 0);
+
+                let set_err = quat_arena_set_quat(handle, 0, Quat::V11.to_bits());
+                assert_eq!(set_err as u32, QuatUiError::Success as u32);
+                assert_eq!((*handle).0.get_node_quat(NodeId(0)), Some(Quat::V11));
+
+                let del_err = quat_arena_destroy(handle);
+                assert_eq!(del_err as u32, QuatUiError::Success as u32);
+            }
+        }
+
+        let duration = start.elapsed();
+        println!(
+            "\n[BENCHMARK] test_23_node_arena_and_ffi_lifecycle_benchmark took: {:?}",
+            duration
+        );
     }
 
 }

@@ -25,6 +25,15 @@ impl BasicWidget {
             state: UiState::default(),
         }
     }
+
+    pub fn render_with_sink(&self, sink: &mut impl crate::renderer::DiagnosticsSink) {
+        sink.log(
+            crate::renderer::LogLevel::Trace,
+            "quat_ui::widget",
+            &format!("Rendering widget '{}' with quat {:?}", self.id, self.state.quat),
+        );
+    }
+    
 }
 
 impl Widget for BasicWidget {

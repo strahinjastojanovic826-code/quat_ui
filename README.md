@@ -6,17 +6,23 @@
 
 ## FEATURES
 
-* **Quaternary Logic (2-bit States):** Uses `Quat` enums based on 2-bit values (`V00`, `V01`, `V10`, `V11`) for compact state representation[cite: 2, 7].
-* **Byte Packing (`QuatByte`):** Packs up to 4 quaternary nodes into a single `u8` byte for minimal memory footprint[cite: 7, 8].
-* **High-Performance Memory Buffer (`QuatTreeBuffer`):** A data-oriented structure designed to store and manage the state of thousands of UI nodes efficiently[cite: 5].
-* **Widget Hierarchy & Containers:** Flexible container (`Container`) and widget (`BasicWidget`, `Widget` trait) systems for building nested UI structures[cite: 1, 6].
-* **Layout Engine (`LayoutMode`):** Encodes layout behavior (collapsed, relative, absolute, expanded) directly through quaternary states[cite: 3].
-* **Event Management (`UiEvent`):** Robust mapping of high-level user interactions and system triggers into quaternary target states[cite: 2].
+* **Quaternary Logic (2-bit States):** Uses `Quat` enums based on 2-bit values (`V00`, `V01`, `V10`, `V11`) for compact state representation.
+* **Byte Packing (`QuatByte`):** Packs up to 4 quaternary nodes into a single `u8` byte for minimal memory footprint.
+* **High-Performance Memory Buffer (`QuatTreeBuffer`):** A data-oriented structure designed to store and manage the state of thousands of UI nodes efficiently.
+* **Widget Hierarchy & Containers:** Flexible container (`Container`) and widget (`BasicWidget`, `Widget` trait) systems for building nested UI structures.
+* **Layout Engine (`LayoutMode`):** Encodes layout behavior (collapsed, relative, absolute, expanded) directly through quaternary states.
+* **Event Management (`UiEvent`):** Robust mapping of high-level user interactions and system triggers into quaternary target states.
 * **Universal FFI Layer (C / C# / Python Interop):** Stable external interface with memory management and interoperability functions for other programming languages[cite: 9, 10, 11, 12].
-* **Comprehensive Testing:** Thorough suite of unit tests and heavy stress tests covering thousands of nodes in real-time[cite: 13, 14, 15, 16].
+* **Comprehensive Testing:** Thorough suite of unit tests and heavy stress tests covering thousands of nodes in real-time.
 * **Theme Engine (`Theme` & `Color`):** Automatic mapping of quaternary states into visual themes and colors.
 * **Container Scrolling (`scroll_y` & `max_scroll_y`):** Built-in vertical scroll states and offset management for container widgets.
 * **Renderer Backend (`RendererBackend`):** Abstract rendering bridge designed to map quaternary UI buffers onto graphical targets.
+* **Arena & Index-Based Hierarchy (`NodeArena`, `NodeId`, `NodeMeta`):** Index-addressed node hierarchy (`parent`, `first_child`, `next_sibling`) paired with packed quaternary state buffers.
+* **Quaternary State Machine & Event Dispatch (`UiEvent::next_state`, `dispatch_event`):** Deterministic state transitions respecting `Disabled` (`00`) guards, `Press`/`Release` flow, and child state propagation.
+* **Batch Operations & State Diffing (`QuatTreeBuffer`):** Range updates (`set_range`, `fill`, `clear_all`), state queries (`indices_by_state`, `count_in_range`), and change detection (`diff_indices`).
+* **Dirty Tracking & Incremental Rendering:** Tracks modified node indices (`set_node_state_tracked`, `mark_dirty`) to support incremental rendering (`render_tree_buffer_incremental`).
+* **Snapshots, Diagnostics & Frame Metrics:** Byte-level snapshots (`QuatSnapshot`), state distribution stats (`QuatStateStats`), pluggable logging (`DiagnosticsSink`), and per-frame metrics (`FrameMetrics`).
+* **Expanded Layout & Arena FFI:** Supports explicit relative/absolute sizing (`resolve_detailed`), rich `RenderCommand` output (`rect` and `color`), and C ABI lifecycle functions (`quat_arena_*`).
 
 ---
 
@@ -34,25 +40,31 @@ Using `QuatByte`, **4 quaternary states are packed into a single standard byte (
 
 ## Benchmark
 
-| Test Name | Duration | Description / Category |
-| :--- | :--- | :--- |
-| `test_01_quat_basic_bits` | 1.7µs | Quaternary basic bit conversions & masking |
-| `test_02_quat_byte_default` | 900ns | QuatByte default initialization |
-| `test_03_quat_byte_single_set_get` | 400ns | Single bit-packing set and get operations |
-| `test_04_quat_byte_out_of_bounds` | 300ns | Out of bounds safety checks |
-| `test_05_quat_byte_full_packing` | 400ns | Full 4-quat byte packing & binary verification |
-| `test_06_ui_state_defaults` | 100ns | UI state default values & active states |
-| `test_07_ui_event_mapping` | 300ns | UI event to quaternary state mapping |
-| `test_08_basic_widget_state_update` | 6.1µs | Basic widget state transitions |
-| `test_09_layout_mode_flags` | 200ns | Layout mode flag checks (collapsed/expanded) |
-| `test_10_container_widget_hierarchy` | 2.8µs | Container child widget management |
-| `test_11_tree_buffer_medium_capacity` | 1.4µs | Tree buffer bounds & memory footprint |
-| `test_12_stress_test_tree_buffer_heavy_churn` | 2.3692ms | Heavy stress test (10,000 nodes, multiple churn loops) |
-| `test_13_ffi_null_pointer_safety` | 100ns | FFI safety handling with null pointers |
-| `test_14_layout_resolution` | 200ns | Layout dimension and constraint resolution |
-| `test_15_theme_resolution_benchmark` | 144.6µs | Theme color resolution across quaternary states |
-| `test_16_container_scrolling_benchmark` | 70.9µs | Container scroll state iterations |
-| `test_17_renderer_backend_benchmark` | 20.7µs | Renderer backend buffer iteration & drawing simulation |
+| # | Test Name | Category | Measured Time | Status |
+| :--- | :--- | :--- | :--- | :--- |
+| 01 | `test_01_quat_basic_bits` | Quaternary Primitives | `5.6µs` | `ok` |
+| 02 | `test_02_quat_byte_default` | Byte Packing | `10.1µs` | `ok` |
+| 03 | `test_03_quat_byte_single_set_get` | Byte Packing | `300ns` | `ok` |
+| 04 | `test_04_quat_byte_out_of_bounds` | Bounds & Validation | `200ns` | `ok` |
+| 05 | `test_05_quat_byte_full_packing` | Byte Packing | `600ns` | `ok` |
+| 06 | `test_06_ui_state_defaults` | State Defaults | `100ns` | `ok` |
+| 07 | `test_07_ui_event_mapping` | Event Mapping | `200ns` | `ok` |
+| 08 | `test_08_basic_widget_state_update` | Widget State | `23.4µs` | `ok` |
+| 09 | `test_09_layout_mode_flags` | Layout Engine | `200ns` | `ok` |
+| 10 | `test_10_container_widget_hierarchy` | Widget Hierarchy | `14.3µs` | `ok` |
+| 11 | `test_11_tree_buffer_medium_capacity` | Tree Buffer | `2.1µs` | `ok` |
+| 12 | `test_12_stress_test_tree_buffer_heavy_churn` | Stress & Memory | `2.5968ms` | `ok` |
+| 13 | `test_13_ffi_null_pointer_safety` | FFI Safety | `300ns` | `ok` |
+| 14 | `test_14_layout_resolution` | Layout Engine | `200ns` | `ok` |
+| 15 | `test_15_theme_resolution_benchmark` | Theme Engine | `160.4µs` | `ok` |
+| 16 | `test_16_container_scrolling_benchmark` | Scrolling | `57.9µs` | `ok` |
+| 17 | `test_17_renderer_backend_benchmark` | Renderer Backend | `29.7µs` | `ok` |
+| 18 | `test_18_ui_event_transitions_benchmark` | State Machine | `204.5µs` | `ok` |
+| 19 | `test_19_container_dispatch_event_benchmark` | Event Dispatch | `211.1µs` | `ok` |
+| 20 | `test_20_layout_detailed_resolution_benchmark` | Layout Engine | `127.5µs` | `ok` |
+| 21 | `test_21_tree_buffer_range_query_and_diff_benchmark` | Buffer Query & Diff | `59.1524ms` | `ok` |
+| 22 | `test_22_dirty_tracking_snapshot_and_diagnostics_benchmark` | Dirty, Snapshot & Diag | `3.4603ms` | `ok` |
+| 23 | `test_23_node_arena_and_ffi_lifecycle_benchmark` | Arena & FFI Lifecycle | `902.4µs` | `ok` |
 
 ---
 
@@ -73,14 +85,12 @@ Add the library to your Rust project configuration with `cdylib` support for FFI
 
 ```toml
 [dependencies]
-quat_ui = "0.5.0"
+quat_ui = "0.6.0"
 ```
 
 ---
 
 ## 🚀 Quick Start (Rust)
-
-Here is a quick example showing how to initialize a container widget, add child elements, and handle state changes:
 
 ```rust
 use quat_ui::{BasicWidget, Container, UiEvent, UiState, Widget};
@@ -100,11 +110,12 @@ fn main() {
     println!("--- Initial Render ---");
     root_panel.render();
 
-    // 4. Simulate a focus event translated to a quaternary state
-    let event = UiEvent::FocusGained;
-    root_panel.set_state(UiState::new(event.target_quat()));
-    
-    println!("\n--- Render After Focus Event ---");
+    // 4. Dispatch a focus event through the container state machine
+    let changed = root_panel.dispatch_event(&UiEvent::FocusGained);
+    let next_q = UiEvent::FocusGained.next_state(root_panel.state().quat);
+    root_panel.set_state(UiState::new(next_q));
+
+    println!("\n--- Render After Focus Event (changed: {}) ---", changed);
     root_panel.render();
 }
 ```
@@ -114,7 +125,7 @@ fn main() {
 ## Themes and Scrolling
 
 ```rust
-use quat_ui::{Container, Theme, Quat, QuatTreeBuffer, render_tree_buffer};
+use quat_ui::{Container, Quat, Theme};
 
 fn main() {
     // 1. Initialize container with scroll values
@@ -126,8 +137,37 @@ fn main() {
     let theme = Theme::default_dark();
     let active_color = theme.resolve_color(Quat::V11); // Maps V11 (Active/Pressed) to theme color
 
-    println!("Container scroll Y: {}, Max scroll Y: {}", root_panel.scroll_y, root_panel.max_scroll_y);
-    println!("Resolved active theme color - R: {}, G: {}, B: {}", active_color.r, active_color.g, active_color.b);
+    println!(
+        "Container scroll Y: {}, Max scroll Y: {}",
+        root_panel.scroll_y, root_panel.max_scroll_y
+    );
+    println!(
+        "Resolved active theme color - R: {}, G: {}, B: {}",
+        active_color.r, active_color.g, active_color.b
+    );
+}
+```
+
+---
+
+## Buffer Operations, Snapshots & Dirty Tracking
+
+```rust
+use quat_ui::{Quat, QuatTreeBuffer};
+
+fn main() {
+    let mut buffer = QuatTreeBuffer::new(16);
+    let mut dirty = vec![false; 16];
+
+    buffer.set_range(0, 4, Quat::V10).unwrap();
+    let changed = buffer.set_node_state_tracked(2, Quat::V11, &mut dirty).unwrap();
+
+    let snapshot = buffer.snapshot();
+    println!("State changed: {}, dirty[2]: {}", changed, dirty[2]);
+    println!("{}", buffer.debug_summary());
+
+    buffer.clear_all();
+    buffer.restore_snapshot(&snapshot).unwrap();
 }
 ```
 
@@ -135,44 +175,56 @@ fn main() {
 
 ## 🌐 FFI Integration (C# / Python)
 
-Thanks to the built-in C-compatible FFI layer (`src/ffi.rs`), you can compile `quat_ui` into a dynamic library (`.dll`, `.so`, or `.dylib`) and use it in UI frameworks across other languages.
+Thanks to the built-in C-compatible FFI layer (`src/ffi.rs`), you can compile `quat_ui` into a dynamic library (`.dll`, `.so`, or `.dylib`) and use it from other languages.
 
 ### C# (.NET) Example:
+
 ```csharp
 using System;
 using System.Runtime.InteropServices;
 
 class Program
 {
-    // Dodat je CharSet.Ansi da bi C# ispravno konvertovao string u ANSI/UTF-8 format koji Rust očekuje
+    [DllImport("quat_ui", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr quat_arena_create(UIntPtr capacity_nodes);
+
     [DllImport("quat_ui", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-    private static extern IntPtr quat_widget_new(string id);
+    private static extern int quat_arena_add_basic_widget(
+        IntPtr handle,
+        string id_ptr,
+        out UIntPtr out_node_id
+    );
 
     [DllImport("quat_ui", CallingConvention = CallingConvention.Cdecl)]
-    private static extern void quat_widget_free(IntPtr widget);
+    private static extern int quat_arena_set_quat(
+        IntPtr handle,
+        UIntPtr node_id,
+        byte quat_val
+    );
 
     [DllImport("quat_ui", CallingConvention = CallingConvention.Cdecl)]
-    private static extern void quat_widget_set_state(IntPtr widget, byte quatVal);
-
-    [DllImport("quat_ui", CallingConvention = CallingConvention.Cdecl)]
-    private static extern void quat_widget_render(IntPtr widget);
+    private static extern int quat_arena_destroy(IntPtr handle);
 
     static void Main()
     {
-        IntPtr btn = quat_widget_new("SubmitButton");
-        quat_widget_set_state(btn, 0b11); // Set state to Active (11)
-        quat_widget_render(btn);
-        quat_widget_free(btn);
+        IntPtr arena = quat_arena_create((UIntPtr)64);
+        if (arena == IntPtr.Zero) return;
+
+        quat_arena_add_basic_widget(arena, "SubmitButton", out UIntPtr nodeId);
+        quat_arena_set_quat(arena, nodeId, 0b11); // V11 (Active / Pressed)
+        quat_arena_destroy(arena);
     }
 }
 ```
 
+---
+
 ### Python Example:
+
 ```python
 import ctypes
 import sys
 
-# Automatsko prepoznavanje operativnog sistema i odgovarajuće ekstenzije biblioteke
 if sys.platform.startswith("win"):
     lib_path = "./target/release/quat_ui.dll"
 elif sys.platform.startswith("darwin"):
@@ -180,21 +232,34 @@ elif sys.platform.startswith("darwin"):
 else:
     lib_path = "./target/release/libquat_ui.so"
 
-# Učitavanje kompajlirane biblioteke
 lib = ctypes.CDLL(lib_path)
 
-# Setup argument and return types
-lib.quat_widget_new.argtypes = [ctypes.c_char_p]
-lib.quat_widget_new.restype = ctypes.c_void_p
-lib.quat_widget_set_state.argtypes = [ctypes.c_void_p, ctypes.c_uint8]
-lib.quat_widget_render.argtypes = [ctypes.c_void_p]
-lib.quat_widget_free.argtypes = [ctypes.c_void_p]
+lib.quat_arena_create.argtypes = [ctypes.c_size_t]
+lib.quat_arena_create.restype = ctypes.c_void_p
 
-# Usage
-widget = lib.quat_widget_new(b"PythonButton")[cite: 19]
-lib.quat_widget_set_state(widget, 2)  # Binary 10 (Hover state)[cite: 7, 19]
-lib.quat_widget_render(widget)[cite: 19]
-lib.quat_widget_free(widget)[cite: 19]
+lib.quat_arena_add_basic_widget.argtypes = [
+    ctypes.c_void_p,
+    ctypes.c_char_p,
+    ctypes.POINTER(ctypes.c_size_t),
+]
+lib.quat_arena_add_basic_widget.restype = ctypes.c_int
+
+lib.quat_arena_set_quat.argtypes = [
+    ctypes.c_void_p,
+    ctypes.c_size_t,
+    ctypes.c_uint8,
+]
+lib.quat_arena_set_quat.restype = ctypes.c_int
+
+lib.quat_arena_destroy.argtypes = [ctypes.c_void_p]
+lib.quat_arena_destroy.restype = ctypes.c_int
+
+arena = lib.quat_arena_create(64)
+if arena:
+    node_id = ctypes.c_size_t(0)
+    lib.quat_arena_add_basic_widget(arena, b"PythonButton", ctypes.byref(node_id))
+    lib.quat_arena_set_quat(arena, node_id.value, 0b10)  # V10 (Focused / Hover)
+    lib.quat_arena_destroy(arena)
 ```
 
 ---
